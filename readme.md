@@ -6,7 +6,7 @@ Lightweight post view tracking with day, week, month, year, and multi-year break
 
 ## 📋 Metadata
 
-* **Contributors:** jeffmilner
+* **Contributors:** Jeff Milner
 * **Tags:** stats, analytics, post views, popular posts, trending
 * **Requires at least:** 5.8
 * **Tested up to:** 6.7
@@ -18,7 +18,7 @@ Lightweight post view tracking with day, week, month, year, and multi-year break
 
 ## 🚀 Description
 
-**WP Stats Counter** gives you Jetpack-style view tracking for your posts and pages — without the bloat of a full Jetpack installation.
+**WP Stats Counter** gives you simple view tracking for your posts and pages.
 
 ### Key Features:
 
