@@ -35,7 +35,10 @@ class WMS_Admin_Bar {
 		$wp_admin_bar->add_node( [
 			'id'    => 'wms-stats',
 			'title' => '<span class="ab-icon dashicons dashicons-chart-bar" style="top:2px"></span>'
-			         . '<span class="ab-label">' . esc_html__( 'Stats', 'wp-milner-stats' ) . '</span>',
+			         . '<span class="ab-label wms-ab-label-wrap">'
+			         . esc_html__( 'Stats', 'wp-milner-stats' )
+			         . self::sparkline_svg()
+			         . '</span>',
 			'href'  => $dashboard_url,
 			'meta'  => [ 'title' => __( 'Milner Stats Dashboard', 'wp-milner-stats' ) ],
 		] );
@@ -149,11 +152,119 @@ class WMS_Admin_Bar {
 			font-weight: 700;
 			font-variant-numeric: tabular-nums;
 		}
+
+		/* ── Admin bar sparkline ──────────────────────────────────── */
+		.wms-ab-label-wrap {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			line-height: 1;
+		}
+		.wms-ab-sparkline {
+			display: inline-block;
+			vertical-align: middle;
+			overflow: visible;
+			flex-shrink: 0;
+			margin-top: -1px;
+		}
+		.wms-spark-line {
+			fill: none;
+			stroke: #72aee6;
+			stroke-width: 1.5;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+		.wms-spark-area {
+			fill: rgba(114,174,230,0.22);
+			stroke: none;
+		}
+		.wms-spark-dot {
+			fill: #72aee6;
+			stroke: none;
+		}
+		/* Brighten on hover of root node */
+		#wp-admin-bar-wms-stats:hover .wms-spark-line { stroke: #fff; }
+		#wp-admin-bar-wms-stats:hover .wms-spark-area { fill: rgba(255,255,255,0.18); }
+		#wp-admin-bar-wms-stats:hover .wms-spark-dot  { fill: #fff; }
 		</style>
 		<?php
 	}
 
 	// ── Helpers ────────────────────────────────────────────────────────────
+
+	/**
+	 * Build an inline SVG sparkline showing the last 7 days of sitewide views.
+	 *
+	 * The sparkline is rendered entirely server-side — no JS, no extra HTTP
+	 * requests. Values are fetched from the same cached query used by the
+	 * dashboard, so there is no meaningful performance cost.
+	 *
+	 * @return string  Safe HTML string containing the <svg> element.
+	 */
+	private static function sparkline_svg(): string {
+		// Fetch last 7 days of sitewide daily views (cached, 5 min TTL).
+		$daily = WMS_Query::get_daily_views( 7 );
+
+		if ( empty( $daily ) ) {
+			return '';
+		}
+
+		$values = array_column( $daily, 'views' );
+		$max    = max( $values );
+
+		// Dimensions (px) — sized to sit neatly beside the "Stats" label at 28px bar height.
+		$w      = 38;
+		$h      = 16;
+		$pad_x  = 1;   // horizontal breathing room
+		$pad_y  = 2;   // vertical breathing room (keeps line off the edges)
+
+		$n      = count( $values );
+		$x_step = ( $w - $pad_x * 2 ) / max( 1, $n - 1 );
+		$y_range = $h - $pad_y * 2;
+
+		// Build the polyline points string.
+		$points = [];
+		foreach ( $values as $i => $v ) {
+			$x = $pad_x + $i * $x_step;
+			// Invert Y: SVG 0 is top, so high values produce small Y.
+			$y = $max > 0
+				? $pad_y + $y_range - ( $v / $max ) * $y_range
+				: $pad_y + $y_range; // flat line when all zeros
+			$points[] = round( $x, 2 ) . ',' . round( $y, 2 );
+		}
+		$points_str = implode( ' ', $points );
+
+		// Build a filled area path: line down right edge, along bottom, back to start.
+		$last_x  = round( $pad_x + ( $n - 1 ) * $x_step, 2 );
+		$base_y  = $h - $pad_y + 1;
+		$first_x = round( (float) $pad_x, 2 );
+
+		$area_d = 'M ' . $points[0]
+		        . ' L ' . implode( ' L ', array_slice( $points, 1 ) )
+		        . " L {$last_x},{$base_y} L {$first_x},{$base_y} Z";
+
+		// Highlight the last data point with a small dot.
+		$last_parts = explode( ',', end( $points ) );
+		$dot_cx     = $last_parts[0];
+		$dot_cy     = $last_parts[1];
+
+		$svg = sprintf(
+			'<svg class="wms-ab-sparkline" xmlns="http://www.w3.org/2000/svg"'
+			. ' width="%d" height="%d" viewBox="0 0 %d %d"'
+			. ' aria-hidden="true" focusable="false">'
+			. '<path class="wms-spark-area" d="%s" />'
+			. '<polyline class="wms-spark-line" points="%s" />'
+			. '<circle class="wms-spark-dot" cx="%s" cy="%s" r="1.5" />'
+			. '</svg>',
+			$w, $h, $w, $h,
+			esc_attr( $area_d ),
+			esc_attr( $points_str ),
+			esc_attr( $dot_cx ),
+			esc_attr( $dot_cy )
+		);
+
+		return $svg;
+	}
 
 	/**
 	 * Get the current post ID in both frontend and admin contexts.
