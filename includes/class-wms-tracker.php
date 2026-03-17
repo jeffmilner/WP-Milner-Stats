@@ -122,7 +122,11 @@ class WMS_Tracker {
 	}
 
 	private static function is_new_visitor( int $post_id, string $ip_hash, int $window ): bool {
-		$transient_key = 'wms_vis_' . $post_id . '_' . substr( $ip_hash, 0, 16 );
+		// Intentionally does NOT scope to $post_id. We want to know whether this IP
+		// has visited the *site* within the visitor window — not just this one post.
+		// Scoping to post_id caused a single person reading N posts in one session to
+		// be counted as N visitors in sitewide totals, making visitors ≈ views.
+		$transient_key = 'wms_vis_' . substr( $ip_hash, 0, 16 );
 
 		if ( false !== get_transient( $transient_key ) ) {
 			return false;
@@ -133,8 +137,8 @@ class WMS_Tracker {
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - $window );
 
 		$exists = $wpdb->get_var( $wpdb->prepare(
-			"SELECT 1 FROM {$table} WHERE post_id = %d AND ip_hash = %s AND viewed_at > %s LIMIT 1",
-			$post_id, $ip_hash, $cutoff
+			"SELECT 1 FROM {$table} WHERE ip_hash = %s AND viewed_at > %s LIMIT 1",
+			$ip_hash, $cutoff
 		) );
 
 		set_transient( $transient_key, 1, $window );
