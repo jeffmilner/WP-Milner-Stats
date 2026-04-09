@@ -433,25 +433,28 @@ class WMS_Jetpack_Import {
 
 		$results = [ 'site_id' => $site_id, 'path' => $path, 'has_user_token' => $has_user_token ];
 
-		// Try as_user
-		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
+		$call = function( string $p ) use ( &$results, $site_id ): void {
+			if ( ! class_exists( 'Automattic\Jetpack\Connection\Client' ) ) return;
 			$r = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user(
-				$path, '1.1', [], null, 'https://public-api.wordpress.com'
+				$p, '1.1', [], null, 'https://public-api.wordpress.com'
 			);
-			$results['as_user'] = is_wp_error( $r )
+			$results[ $p ] = is_wp_error( $r )
 				? [ 'wp_error' => $r->get_error_message() ]
-				: [ 'http_code' => wp_remote_retrieve_response_code( $r ), 'body' => json_decode( wp_remote_retrieve_body( $r ), true ) ];
-		}
+				: [ 'http_code' => wp_remote_retrieve_response_code( $r ),
+				    'body'      => json_decode( wp_remote_retrieve_body( $r ), true ) ];
+		};
 
-		// Try as_blog
-		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
-			$r = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_blog(
-				$path, '1.1', [], null, 'https://public-api.wordpress.com'
-			);
-			$results['as_blog'] = is_wp_error( $r )
-				? [ 'wp_error' => $r->get_error_message() ]
-				: [ 'http_code' => wp_remote_retrieve_response_code( $r ), 'body' => json_decode( wp_remote_retrieve_body( $r ), true ) ];
-		}
+		// Test 1: per-post stats with Jetpack site ID
+		$call( '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id );
+
+		// Test 2: sitewide stats summary with Jetpack site ID — confirms whether 3332322 is accessible at all
+		$call( '/sites/' . rawurlencode( $site_id ) . '/stats/' );
+
+		// Test 3: per-post stats with the alternate ID seen in the WP.com user object
+		$call( '/sites/5836086/stats/post/' . $post_id );
+
+		// Test 4: sitewide stats with the alternate ID
+		$call( '/sites/5836086/stats/' );
 
 		wp_send_json_success( $results );
 	}
