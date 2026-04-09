@@ -448,38 +448,52 @@ class WMS_Jetpack_Import {
 			}
 		}
 
-		$results['token_secret_length'] = strlen( $token_secret );
-
-		// Get a properly signed token using Jetpack's HMAC signing
+		// Build a properly signed token: KEY:hmac(KEY, SECRET)
 		$signed_token = '';
-		if ( $tok && class_exists( 'Automattic\Jetpack\Connection\Manager' ) ) {
-			$signed = Automattic\Jetpack\Connection\Manager::get_signed_token( $tok );
-			if ( ! is_wp_error( $signed ) ) {
-				$signed_token = $signed;
-			}
+		if ( $token_secret && strpos( $token_secret, '.' ) !== false ) {
+			list( $t_key, $t_rest ) = explode( '.', $token_secret, 2 );
+			// Strip the trailing .wpcom_user_id if present (format: KEY.SECRET.USER_ID)
+			$t_secret     = strpos( $t_rest, '.' ) !== false ? explode( '.', $t_rest )[0] : $t_rest;
+			$signed_token = $t_key . ':' . hash_hmac( 'sha256', $t_key, $t_secret );
 		}
+
+		$results['token_secret_length'] = strlen( $token_secret );
 		$results['signed_token_length'] = strlen( $signed_token );
 
-		// Direct request helper — uses properly signed X_JETPACK token
-		$direct = function( string $url ) use ( $signed_token, $token_secret ): array {
-			// Try signed token first; fall back to raw secret if signing not available
-			$auth = $signed_token ? 'X_JETPACK token=' . $signed_token : 'X_JETPACK token=' . $token_secret;
-			$r    = wp_remote_get( $url, [
+		// Get blog token for comparison
+		$blog_token = '';
+		if ( class_exists( 'Automattic\Jetpack\Connection\Manager' ) ) {
+			$btok = ( new Automattic\Jetpack\Connection\Manager() )->get_access_token( false );
+			if ( $btok && ! empty( $btok->secret ) && strpos( $btok->secret, '.' ) !== false ) {
+				list( $bk, $br ) = explode( '.', $btok->secret, 2 );
+				$bs              = strpos( $br, '.' ) !== false ? explode( '.', $br )[0] : $br;
+				$blog_token      = $bk . ':' . hash_hmac( 'sha256', $bk, $bs );
+			}
+		}
+		$results['blog_token_length'] = strlen( $blog_token );
+
+		$req = function( string $url, string $auth ): array {
+			$r = wp_remote_get( $url, [
 				'headers'   => [ 'Authorization' => $auth ],
 				'timeout'   => 15,
 				'sslverify' => true,
 			] );
-			if ( is_wp_error( $r ) ) {
-				return [ 'wp_error' => $r->get_error_message() ];
-			}
+			if ( is_wp_error( $r ) ) return [ 'wp_error' => $r->get_error_message() ];
 			return [
 				'http_code' => wp_remote_retrieve_response_code( $r ),
 				'body'      => json_decode( wp_remote_retrieve_body( $r ), true ),
 			];
 		};
 
-		$results['direct_sitewide_3332322'] = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/' );
-		$results['direct_post_3332322']     = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/post/' . $post_id );
+		$base = 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/';
+
+		if ( $signed_token ) {
+			$results['user_signed_sitewide'] = $req( $base . 'stats/', 'X_JETPACK token=' . $signed_token );
+			$results['user_signed_post']     = $req( $base . 'stats/post/' . $post_id, 'X_JETPACK token=' . $signed_token );
+		}
+		if ( $blog_token ) {
+			$results['blog_signed_sitewide'] = $req( $base . 'stats/', 'X_JETPACK token=' . $blog_token );
+		}
 
 		wp_send_json_success( $results );
 	}
