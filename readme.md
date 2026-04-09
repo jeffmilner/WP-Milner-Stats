@@ -122,3 +122,15 @@ Lightweight post view tracking with day, week, month, year, and multi-year break
 ### 1.0.0
 
 * Initial release
+
+### 1.1.1
+
+* Bar graph instead of line graph
+
+### 1.1.2
+
+* Fixed a bug that meant Milner Stats only kept stats for 1 year.
+
+### 1.1.3
+
+* Import from Jetpack
