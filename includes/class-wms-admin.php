@@ -634,20 +634,12 @@ class WMS_Admin {
 				   class="button">
 					<?php esc_html_e( 'Insert Test Referrer Record', 'wp-milner-stats' ); ?>
 				</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . WMS_Admin::MENU_SLUG . '-settings&wms_run_cleanup=1&_wpnonce=' . wp_create_nonce( 'wms_run_cleanup' ) ) ); ?>"
-				   class="button">
-					<?php esc_html_e( 'Run Cleanup Now', 'wp-milner-stats' ); ?>
-				</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . WMS_Admin::MENU_SLUG . '-settings&wms_fix_visitors=1&_wpnonce=' . wp_create_nonce( 'wms_fix_visitors' ) ) ); ?>"
+<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . WMS_Admin::MENU_SLUG . '-settings&wms_fix_visitors=1&_wpnonce=' . wp_create_nonce( 'wms_fix_visitors' ) ) ); ?>"
 				   class="button"
 				   onclick="return confirm('<?php echo esc_js( __( 'This will recompute all historical visitor data to fix the pre-v1.1.0 counting bug. It may take a few seconds on large datasets. Continue?', 'wp-milner-stats' ) ); ?>')">
 					<?php esc_html_e( 'Fix Historical Visitor Counts', 'wp-milner-stats' ); ?>
 				</a>
 			</p>
-			<?php
-			// Cron info
-			$next = wp_next_scheduled( 'wms_daily_cleanup' );
-			?>
 			<div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:14px 16px;margin-top:16px;font-size:13px;line-height:1.6">
 				<strong><?php esc_html_e( 'How referrer tracking works', 'wp-milner-stats' ); ?></strong>
 				<p style="margin:6px 0 0"><?php esc_html_e( 'Referrers are only recorded when a visitor arrives at your site from an external website. Direct traffic (typing the URL, bookmarks, emails) has no referrer by design — this is how browsers work.', 'wp-milner-stats' ); ?></p>
@@ -655,9 +647,7 @@ class WMS_Admin {
 				<p style="margin:4px 0 0;color:#888"><?php esc_html_e( 'Note: Google and most major search engines hide search terms for privacy reasons. You will see "google.com" as a referrer domain but the search term may be empty.', 'wp-milner-stats' ); ?></p>
 			</div>
 			<p style="color:#666;font-size:12px;margin-top:10px">
-				<?php esc_html_e( 'Next scheduled cleanup:', 'wp-milner-stats' ); ?>
-				<?php echo $next ? esc_html( get_date_from_gmt( gmdate( 'Y-m-d H:i:s', $next ) ) ) : esc_html__( 'Not scheduled', 'wp-milner-stats' ); ?>
-				| <?php esc_html_e( 'Plugin version:', 'wp-milner-stats' ); ?> <?php echo esc_html( WMS_VERSION ); ?>
+				<?php esc_html_e( 'Plugin version:', 'wp-milner-stats' ); ?> <?php echo esc_html( WMS_VERSION ); ?>
 				| <?php esc_html_e( 'DB schema version:', 'wp-milner-stats' ); ?> <?php echo esc_html( get_option( 'wms_db_version', 'none' ) ); ?>
 			</p>
 		</div>

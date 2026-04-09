@@ -78,8 +78,10 @@ class WMS_Activator {
 
 		update_option( 'wms_db_version', WMS_VERSION );
 
-		if ( ! wp_next_scheduled( 'wms_daily_cleanup' ) ) {
-			wp_schedule_event( time(), 'daily', 'wms_daily_cleanup' );
+		// Cancel any previously-scheduled cleanup cron (stats are kept indefinitely).
+		$timestamp = wp_next_scheduled( 'wms_daily_cleanup' );
+		if ( $timestamp ) {
+			wp_unschedule_event( $timestamp, 'wms_daily_cleanup' );
 		}
 	}
 
@@ -94,39 +96,7 @@ class WMS_Activator {
 	}
 
 	/**
-	 * Batch-delete records older than 366 days across all three tables.
+	 * No-op — stats are kept indefinitely.
 	 */
-	public static function cleanup_old_records() {
-		global $wpdb;
-
-		$cutoff  = gmdate( 'Y-m-d H:i:s', strtotime( '-366 days' ) );
-		$batch   = 1000;
-		$deleted = 0;
-
-		$tables = [
-			[ 'table' => $wpdb->prefix . WMS_TABLE_NAME,      'col' => 'viewed_at'  ],
-			[ 'table' => $wpdb->prefix . WMS_REFERRERS_TABLE, 'col' => 'viewed_at'  ],
-			[ 'table' => $wpdb->prefix . WMS_OUTLINKS_TABLE,  'col' => 'clicked_at' ],
-		];
-
-		foreach ( $tables as $t ) {
-			do {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- result is cached via wp_cache_get/set in this method.
-				$rows = $wpdb->query(
-					$wpdb->prepare(
-						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is $wpdb->prefix + plugin constant, not user input; MySQL does not support table names as prepare() placeholders.
-						"DELETE FROM `{$t['table']}` WHERE `{$t['col']}` < %s LIMIT %d",
-						$cutoff,
-						$batch
-					)
-				);
-				$deleted += (int) $rows;
-			} while ( $rows === $batch );
-		}
-
-		set_transient( 'wms_last_cleanup', [
-			'time'    => current_time( 'mysql' ),
-			'deleted' => $deleted,
-		], DAY_IN_SECONDS * 2 );
-	}
+	public static function cleanup_old_records() {}
 }

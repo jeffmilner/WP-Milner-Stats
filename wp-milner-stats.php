@@ -3,7 +3,7 @@
  * Plugin Name:       Milner Stats
  * Plugin URI:        https://github.com/jeffmilner/WP-Milner-Stats
  * Description:       Lightweight post view tracking with day, week, month, year, and multi-year breakdowns. No bloat, no external services.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Jeff Milner
@@ -16,7 +16,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'WMS_VERSION',         '1.1.1' );
+define( 'WMS_VERSION',         '1.1.2' );
 define( 'WMS_PLUGIN_FILE',     __FILE__ );
 define( 'WMS_PLUGIN_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'WMS_PLUGIN_URL',      plugin_dir_url( __FILE__ ) );
