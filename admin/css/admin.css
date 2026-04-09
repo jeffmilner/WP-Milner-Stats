@@ -1,0 +1,662 @@
+/**
+ * WP Milner Stats — Admin Dashboard Styles
+ */
+
+/* ── CSS Variables ────────────────────────────────────────────────────────── */
+:root {
+	--wms-accent:        #2271b1;
+	--wms-accent-hover:  #135e96;
+	--wms-accent-light:  #e8f0fa;
+	--wms-success:       #00a32a;
+	--wms-success-light: #ecfdf5;
+	--wms-surface:       #ffffff;
+	--wms-border:        #dcdcde;
+	--wms-bg:            #f6f7f7;
+	--wms-text:          #1d2327;
+	--wms-muted:         #6b7280;
+	--wms-radius:        8px;
+	--wms-shadow:        0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+}
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+.wms-wrap {
+	max-width: 1200px;
+	padding-top: 12px;
+}
+
+.wms-heading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 22px !important;
+	font-weight: 700 !important;
+	color: var(--wms-text) !important;
+	margin-bottom: 20px !important;
+}
+
+.wms-heading .dashicons {
+	color: var(--wms-accent);
+	font-size: 24px;
+}
+
+/* ── Summary cards ────────────────────────────────────────────────────────── */
+.wms-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 16px;
+	margin-bottom: 28px;
+}
+
+.wms-card {
+	background: var(--wms-surface);
+	border: 1px solid var(--wms-border);
+	border-radius: var(--wms-radius);
+	padding: 18px 18px 14px;
+	box-shadow: var(--wms-shadow);
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	transition: box-shadow .15s ease, transform .15s ease;
+	cursor: default;
+}
+
+.wms-card:hover {
+	box-shadow: 0 4px 12px rgba(0,0,0,.1);
+	transform: translateY(-1px);
+}
+
+.wms-card--total {
+	border-left: 4px solid var(--wms-accent);
+}
+
+.wms-card__label {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: .07em;
+	color: var(--wms-muted);
+	margin-bottom: 8px;
+}
+
+/* Views count — large and prominent */
+.wms-card__value {
+	font-size: 36px;
+	font-weight: 800;
+	color: var(--wms-text);
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+	margin-bottom: 4px;
+}
+
+.wms-card__metric-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--wms-muted);
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	margin-bottom: 10px;
+}
+
+/* Visitors row — clearly separated from views */
+.wms-card__divider {
+	height: 1px;
+	background: var(--wms-border);
+	margin: 8px 0;
+}
+
+.wms-card__visitor-row {
+	display: flex;
+	align-items: baseline;
+	gap: 5px;
+}
+
+.wms-card__visitor-count {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--wms-success);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.wms-card__visitor-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--wms-success);
+	text-transform: uppercase;
+	letter-spacing: .05em;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+.wms-section {
+	background: var(--wms-surface);
+	border: 1px solid var(--wms-border);
+	border-radius: var(--wms-radius);
+	box-shadow: var(--wms-shadow);
+	margin-bottom: 24px;
+	overflow: hidden;
+}
+
+.wms-section__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 14px 20px;
+	border-bottom: 1px solid var(--wms-border);
+	background: #fafafa;
+}
+
+.wms-section__header h2 {
+	margin: 0 !important;
+	padding: 0 !important;
+	border: none !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: var(--wms-text) !important;
+}
+
+.wms-section__hint {
+	font-size: 12px;
+	color: var(--wms-muted);
+	font-style: italic;
+}
+
+/* ── Chart ────────────────────────────────────────────────────────────────── */
+.wms-chart-legend {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 10px 20px 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--wms-muted);
+}
+
+.wms-chart-legend-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.wms-legend-dot {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.wms-legend-dot--views    { background: rgba(34,113,177,1); }
+.wms-legend-dot--visitors { background: rgba(0,163,42,0.9); }
+
+.wms-chart-wrapper {
+	position: relative;
+	padding: 16px 20px 20px;
+	min-height: 240px;
+}
+
+#wms-activity-chart {
+	max-height: 280px;
+}
+
+.wms-chart-loading {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255,255,255,.85);
+	backdrop-filter: blur(2px);
+	border-radius: 0 0 var(--wms-radius) var(--wms-radius);
+	transition: opacity .2s ease;
+}
+
+.wms-chart-loading.is-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* ── Chart range buttons ──────────────────────────────────────────────────── */
+.wms-chart-controls {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.wms-btn {
+	padding: 5px 12px;
+	border: 1px solid var(--wms-border);
+	border-radius: 4px;
+	background: var(--wms-surface);
+	color: var(--wms-muted);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all .12s ease;
+	line-height: 1.4;
+}
+
+.wms-btn:hover {
+	background: var(--wms-accent-light);
+	border-color: var(--wms-accent);
+	color: var(--wms-accent);
+}
+
+.wms-btn--active {
+	background: var(--wms-accent);
+	border-color: var(--wms-accent);
+	color: #fff !important;
+}
+
+/* ── Section header left group (heading + toggle under it) ───────────────── */
+.wms-section__header-left {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+}
+
+.wms-btn--toggle {
+	font-size: 11px;
+	padding: 3px 10px;
+	line-height: 1.4;
+}
+
+/* ── Section header controls (tabs + button together on same row) ─────────── */
+.wms-section__header-controls {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+/* ── Period tabs (Top Posts, Referrers, Outlinks) ─────────────────────────── */
+.wms-period-tabs {
+	display: flex;
+	gap: 2px;
+	background: var(--wms-bg);
+	border: 1px solid var(--wms-border);
+	border-radius: 6px;
+	padding: 3px;
+}
+
+.wms-tab {
+	padding: 5px 14px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--wms-muted);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all .12s ease;
+	line-height: 1.4;
+	position: relative;
+}
+
+.wms-tab:hover {
+	color: var(--wms-text);
+	background: rgba(0,0,0,.04);
+}
+
+/* Active tab: white pill with blue text + underline accent */
+.wms-tab--active {
+	background: var(--wms-surface);
+	color: var(--wms-accent);
+	box-shadow: var(--wms-shadow);
+	font-weight: 700;
+}
+
+.wms-tab--active::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 60%;
+	height: 2px;
+	background: var(--wms-accent);
+	border-radius: 2px 2px 0 0;
+}
+
+/* ── Table wrapper ────────────────────────────────────────────────────────── */
+.wms-table-wrapper {
+	padding: 0;
+	min-height: 100px;
+}
+
+.wms-table-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 32px;
+	color: var(--wms-muted);
+	font-size: 13px;
+}
+
+/* ── Data table ───────────────────────────────────────────────────────────── */
+.wms-posts-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.wms-posts-table thead th {
+	padding: 9px 16px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color: var(--wms-muted);
+	text-align: left;
+	border-bottom: 1px solid var(--wms-border);
+	background: #fafafa;
+}
+
+.wms-posts-table thead th:last-child {
+	text-align: right;
+}
+
+.wms-posts-table tbody tr {
+	border-bottom: 1px solid #f0f0f0;
+	transition: background .1s ease;
+}
+
+.wms-posts-table tbody tr:last-child {
+	border-bottom: none;
+}
+
+.wms-posts-table tbody tr:hover {
+	background: var(--wms-accent-light);
+}
+
+.wms-posts-table td {
+	padding: 11px 16px;
+	font-size: 13px;
+	color: var(--wms-text);
+	vertical-align: middle;
+}
+
+.wms-posts-table .wms-col-rank {
+	width: 36px;
+	color: var(--wms-muted);
+	font-weight: 700;
+	font-size: 12px;
+}
+
+.wms-posts-table .wms-col-title a {
+	color: var(--wms-text);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.wms-posts-table .wms-col-title a:hover {
+	color: var(--wms-accent);
+	text-decoration: underline;
+}
+
+.wms-posts-table .wms-col-type {
+	width: 90px;
+}
+
+.wms-col-type-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 12px;
+	background: #f0f0f1;
+	color: var(--wms-muted);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.wms-posts-table .wms-col-views {
+	width: 120px;
+	text-align: right;
+}
+
+.wms-views-bar-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+.wms-views-bar {
+	flex: 1;
+	max-width: 80px;
+	height: 6px;
+	background: #eee;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.wms-views-bar__fill {
+	height: 100%;
+	background: linear-gradient(90deg, var(--wms-accent), #4f9cf9);
+	border-radius: 3px;
+	transition: width .4s cubic-bezier(.4,0,.2,1);
+}
+
+.wms-views-count {
+	font-weight: 700;
+	font-size: 14px;
+	color: var(--wms-text);
+	font-variant-numeric: tabular-nums;
+	min-width: 40px;
+	text-align: right;
+}
+
+.wms-col-actions {
+	width: 40px;
+	text-align: right;
+}
+
+.wms-col-actions a {
+	color: var(--wms-muted);
+	font-size: 12px;
+	text-decoration: none;
+	opacity: .6;
+	transition: opacity .1s;
+}
+
+.wms-col-actions a:hover {
+	opacity: 1;
+	color: var(--wms-accent);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.wms-empty {
+	padding: 40px 20px;
+	text-align: center;
+	color: var(--wms-muted);
+}
+
+.wms-empty__icon {
+	font-size: 32px;
+	display: block;
+	margin-bottom: 10px;
+	opacity: .35;
+}
+
+.wms-empty__text {
+	font-size: 13px;
+	max-width: 360px;
+	margin: 0 auto;
+	line-height: 1.5;
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.wms-spinner {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--wms-border);
+	border-top-color: var(--wms-accent);
+	border-radius: 50%;
+	animation: wms-spin .6s linear infinite;
+	flex-shrink: 0;
+}
+
+@keyframes wms-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ── Trending score badge ─────────────────────────────────────────────────── */
+.wms-trend-score {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: #fff7ed;
+	border: 1px solid #fed7aa;
+	color: #c2410c;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 12px;
+	white-space: nowrap;
+}
+
+.wms-trend-score--high {
+	background: #fef2f2;
+	border-color: #fecaca;
+	color: #b91c1c;
+}
+
+/* ── Referrer summary mini-cards ──────────────────────────────────────────── */
+.wms-insights-summary {
+	padding: 16px 20px 0;
+}
+
+.wms-ref-summary {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 0;
+}
+
+.wms-ref-summary__item {
+	flex: 1;
+	min-width: 130px;
+	background: var(--wms-bg);
+	border: 1px solid var(--wms-border);
+	border-radius: 6px;
+	padding: 12px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.wms-ref-summary__val {
+	font-size: 24px;
+	font-weight: 800;
+	color: var(--wms-text);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.wms-ref-summary__label {
+	font-size: 11px;
+	color: var(--wms-muted);
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	font-weight: 600;
+}
+
+/* ── Insights two-column layout ──────────────────────────────────────────── */
+.wms-insights-cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+}
+
+.wms-insights-col {
+	border-top: 1px solid var(--wms-border);
+}
+
+.wms-insights-col + .wms-insights-col {
+	border-left: 1px solid var(--wms-border);
+}
+
+.wms-insights-col__title {
+	margin: 0 !important;
+	padding: 10px 16px !important;
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color: var(--wms-muted) !important;
+	border-bottom: 1px solid var(--wms-border);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: #fafafa;
+	line-height: 1.4 !important;
+}
+
+.wms-insights-col__title .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 14px;
+}
+
+/* ── Admin list table column ──────────────────────────────────────────────── */
+.column-wms_views { width: 80px; text-align: center !important; }
+.wms-col-total {
+	display: block;
+	font-weight: 600;
+	font-size: 13px;
+	color: #1d2327;
+	cursor: help;
+}
+.wms-col-today {
+	display: inline-block;
+	margin-top: 2px;
+	background: #d1fae5;
+	color: #065f46;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 1px 5px;
+	border-radius: 10px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+	.wms-insights-cols {
+		grid-template-columns: 1fr;
+	}
+	.wms-insights-col + .wms-insights-col {
+		border-left: none;
+	}
+}
+
+@media (max-width: 782px) {
+	.wms-section__header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.wms-section__header-controls {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+		width: 100%;
+	}
+	.wms-cards {
+		grid-template-columns: 1fr 1fr;
+	}
+	.wms-posts-table .wms-col-type,
+	.wms-posts-table .wms-col-actions {
+		display: none;
+	}
+	.wms-views-bar {
+		display: none;
+	}
+	.wms-chart-controls {
+		gap: 3px;
+	}
+	.wms-btn {
+		padding: 4px 8px;
+		font-size: 11px;
+	}
+}

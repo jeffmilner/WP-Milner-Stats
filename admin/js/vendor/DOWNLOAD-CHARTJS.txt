@@ -1,0 +1,15 @@
+Chart.js must be downloaded and placed in this directory before the plugin's admin pages will render charts.
+
+Required file: chart.umd.min.js  (Chart.js 4.4.3, UMD build)
+
+Download command:
+  curl -o chart.umd.min.js \
+    https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js
+
+Or download manually from:
+  https://github.com/chartjs/Chart.js/releases/tag/v4.4.3
+  (grab chart.umd.min.js from the dist/ folder of the release zip)
+
+Why bundled?
+  WordPress.org plugin policy prohibits loading scripts from external CDNs.
+  The file must be served from the plugin directory itself.
