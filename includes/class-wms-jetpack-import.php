@@ -450,11 +450,23 @@ class WMS_Jetpack_Import {
 
 		$results['token_secret_length'] = strlen( $token_secret );
 
-		// Direct wp_remote_get — bypasses Jetpack client and any proxy filters
-		$direct = function( string $url ) use ( $token_secret ): array {
-			$r = wp_remote_get( $url, [
-				'headers' => [ 'Authorization' => 'X_JETPACK token=' . $token_secret ],
-				'timeout' => 15,
+		// Get a properly signed token using Jetpack's HMAC signing
+		$signed_token = '';
+		if ( $tok && class_exists( 'Automattic\Jetpack\Connection\Manager' ) ) {
+			$signed = Automattic\Jetpack\Connection\Manager::get_signed_token( $tok );
+			if ( ! is_wp_error( $signed ) ) {
+				$signed_token = $signed;
+			}
+		}
+		$results['signed_token_length'] = strlen( $signed_token );
+
+		// Direct request helper — uses properly signed X_JETPACK token
+		$direct = function( string $url ) use ( $signed_token, $token_secret ): array {
+			// Try signed token first; fall back to raw secret if signing not available
+			$auth = $signed_token ? 'X_JETPACK token=' . $signed_token : 'X_JETPACK token=' . $token_secret;
+			$r    = wp_remote_get( $url, [
+				'headers'   => [ 'Authorization' => $auth ],
+				'timeout'   => 15,
 				'sslverify' => true,
 			] );
 			if ( is_wp_error( $r ) ) {
@@ -466,9 +478,8 @@ class WMS_Jetpack_Import {
 			];
 		};
 
-		$results['direct_sitewide_3332322']  = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/' );
-		$results['direct_post_3332322']      = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/post/' . $post_id );
-		$results['direct_sitewide_5836086']  = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/5836086/stats/' );
+		$results['direct_sitewide_3332322'] = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/' );
+		$results['direct_post_3332322']     = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/post/' . $post_id );
 
 		wp_send_json_success( $results );
 	}
