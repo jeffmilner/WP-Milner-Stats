@@ -422,39 +422,38 @@ class WMS_Jetpack_Import {
 		$site_id = (string) Jetpack_Options::get_option( 'id' );
 		$path    = '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
 
+		// Check whether a user token exists for the current user
+		$has_user_token = false;
+		if ( class_exists( 'Automattic\Jetpack\Connection\Manager' ) ) {
+			$manager        = new Automattic\Jetpack\Connection\Manager();
+			$has_user_token = (bool) $manager->get_access_token( get_current_user_id(), false, false );
+		} elseif ( class_exists( 'Jetpack_Data' ) ) {
+			$has_user_token = (bool) Jetpack_Data::get_access_token( get_current_user_id() );
+		}
+
+		$results = [ 'site_id' => $site_id, 'path' => $path, 'has_user_token' => $has_user_token ];
+
+		// Try as_user
 		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
-			$client   = 'Automattic\Jetpack\Connection\Client (as_blog, v1.1)';
-			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_blog(
-				$path,
-				'1.1',
-				[],
-				null,
-				'https://public-api.wordpress.com'
+			$r = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user(
+				$path, '1.1', [], null, 'https://public-api.wordpress.com'
 			);
-		} elseif ( class_exists( 'Jetpack_Client' ) ) {
-			$client   = 'Jetpack_Client (as_blog, v1.1)';
-			$response = Jetpack_Client::wpcom_json_api_request_as_blog( $path, '1.1' );
-		} else {
-			wp_send_json_error( 'No Jetpack client class available.' );
+			$results['as_user'] = is_wp_error( $r )
+				? [ 'wp_error' => $r->get_error_message() ]
+				: [ 'http_code' => wp_remote_retrieve_response_code( $r ), 'body' => json_decode( wp_remote_retrieve_body( $r ), true ) ];
 		}
 
-		if ( is_wp_error( $response ) ) {
-			wp_send_json_success( [
-				'client'    => $client,
-				'site_id'   => $site_id,
-				'path'      => $path,
-				'wp_error'  => $response->get_error_message(),
-			] );
+		// Try as_blog
+		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
+			$r = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_blog(
+				$path, '1.1', [], null, 'https://public-api.wordpress.com'
+			);
+			$results['as_blog'] = is_wp_error( $r )
+				? [ 'wp_error' => $r->get_error_message() ]
+				: [ 'http_code' => wp_remote_retrieve_response_code( $r ), 'body' => json_decode( wp_remote_retrieve_body( $r ), true ) ];
 		}
 
-		wp_send_json_success( [
-			'client'       => $client,
-			'site_id'      => $site_id,
-			'path'         => $path,
-			'http_code'    => wp_remote_retrieve_response_code( $response ),
-			'body'         => json_decode( wp_remote_retrieve_body( $response ), true ),
-			'raw_body'     => substr( wp_remote_retrieve_body( $response ), 0, 500 ),
-		] );
+		wp_send_json_success( $results );
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────────
