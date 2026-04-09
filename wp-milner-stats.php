@@ -3,7 +3,7 @@
  * Plugin Name:       Milner Stats
  * Plugin URI:        https://github.com/jeffmilner/WP-Milner-Stats
  * Description:       Lightweight post view tracking with day, week, month, year, and multi-year breakdowns. No bloat, no external services.
- * Version:           1.1.2
+ * Version:           1.1.3
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Jeff Milner
@@ -16,7 +16,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'WMS_VERSION',         '1.1.2' );
+define( 'WMS_VERSION',         '1.1.3' );
 define( 'WMS_PLUGIN_FILE',     __FILE__ );
 define( 'WMS_PLUGIN_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'WMS_PLUGIN_URL',      plugin_dir_url( __FILE__ ) );
@@ -48,6 +48,7 @@ spl_autoload_register( function ( $class ) {
 		'WMS_Referrer_Query'  => 'class-wms-referrer-query.php',
 		'WMS_Outlink_Query'   => 'class-wms-outlink-query.php',
 		'WMS_Insights'        => 'class-wms-insights.php',
+		'WMS_Jetpack_Import'  => 'class-wms-jetpack-import.php',
 	];
 	if ( isset( $file_map[ $class ] ) ) {
 		require_once WMS_PLUGIN_DIR . 'includes/' . $file_map[ $class ];
@@ -101,6 +102,7 @@ function wms_init() {
 		WMS_Post_Columns::init();
 		WMS_Meta_Box::init();
 		WMS_Export::init();
+		WMS_Jetpack_Import::init();
 	}
 
 	// Dashboard widget (admin area)
