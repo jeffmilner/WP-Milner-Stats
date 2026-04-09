@@ -33,6 +33,7 @@ class WMS_Jetpack_Import {
 		add_action( 'wp_ajax_wms_jp_get_posts',    [ __CLASS__, 'ajax_get_posts' ] );
 		add_action( 'wp_ajax_wms_jp_import_post',  [ __CLASS__, 'ajax_import_post' ] );
 		add_action( 'wp_ajax_wms_jp_clear_import', [ __CLASS__, 'ajax_clear_import' ] );
+		add_action( 'wp_ajax_wms_jp_debug',        [ __CLASS__, 'ajax_debug' ] );
 	}
 
 	public static function add_menu(): void {
@@ -133,6 +134,17 @@ class WMS_Jetpack_Import {
 					style="display:none;margin-top:18px;padding:14px 16px;
 						   background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;font-size:13px;line-height:1.7">
 				</div>
+
+				<details style="margin-top:24px;font-size:12px;color:#888">
+					<summary style="cursor:pointer">API diagnostic</summary>
+					<div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+						<input type="number" id="wms-jp-debug-id" placeholder="Post ID" style="width:100px">
+						<button id="wms-jp-debug-btn" class="button">Test API for this post</button>
+					</div>
+					<pre id="wms-jp-debug-out"
+						style="margin-top:8px;background:#f6f7f7;border:1px solid #ddd;border-radius:4px;
+							   padding:10px;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;display:none"></pre>
+				</details>
 
 			</div><!-- /.wrap inner -->
 		</div><!-- /.wrap -->
@@ -287,6 +299,25 @@ class WMS_Jetpack_Import {
 						? '<span style="color:#d63638">' + totalErrors + ' errors \u2014 see log above</span>'
 						: '<span style="color:#00a32a">No errors.</span>' );
 			}
+			// ── Debug ─────────────────────────────────────────────────────────
+			var debugBtn = document.getElementById( 'wms-jp-debug-btn' );
+			var debugOut = document.getElementById( 'wms-jp-debug-out' );
+			if ( debugBtn ) {
+				debugBtn.addEventListener( 'click', function () {
+					var pid = document.getElementById( 'wms-jp-debug-id' ).value.trim();
+					if ( ! pid ) { alert( 'Enter a post ID first.' ); return; }
+					debugBtn.disabled    = true;
+					debugOut.style.display = 'block';
+					debugOut.textContent   = 'Requesting…';
+					post( 'wms_jp_debug', { post_id: pid } ).then( function ( res ) {
+						debugOut.textContent = JSON.stringify( res, null, 2 );
+						debugBtn.disabled = false;
+					} ).catch( function ( e ) {
+						debugOut.textContent = 'Network error: ' + e.message;
+						debugBtn.disabled = false;
+					} );
+				} );
+			}
 		} )();
 		</script>
 		<?php
@@ -369,6 +400,55 @@ class WMS_Jetpack_Import {
 		);
 
 		wp_send_json_success( [ 'deleted' => $deleted ] );
+	}
+
+	// ── AJAX: raw API diagnostic ──────────────────────────────────────────────
+
+	public static function ajax_debug(): void {
+		check_ajax_referer( 'wms_jp_import' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Permission denied.' );
+		}
+
+		$post_id = absint( $_POST['post_id'] ?? 0 );
+		if ( ! $post_id ) {
+			wp_send_json_error( 'Missing post_id.' );
+		}
+
+		if ( ! class_exists( 'Jetpack_Options' ) ) {
+			wp_send_json_error( 'Jetpack_Options class not found.' );
+		}
+
+		$site_id = (string) Jetpack_Options::get_option( 'id' );
+		$path    = '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
+
+		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
+			$client   = 'Automattic\Jetpack\Connection\Client';
+			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user( $path, '1.1' );
+		} elseif ( class_exists( 'Jetpack_Client' ) ) {
+			$client   = 'Jetpack_Client';
+			$response = Jetpack_Client::wpcom_json_api_request_as_user( $path, '1.1' );
+		} else {
+			wp_send_json_error( 'No Jetpack client class available.' );
+		}
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_success( [
+				'client'    => $client,
+				'site_id'   => $site_id,
+				'path'      => $path,
+				'wp_error'  => $response->get_error_message(),
+			] );
+		}
+
+		wp_send_json_success( [
+			'client'       => $client,
+			'site_id'      => $site_id,
+			'path'         => $path,
+			'http_code'    => wp_remote_retrieve_response_code( $response ),
+			'body'         => json_decode( wp_remote_retrieve_body( $response ), true ),
+			'raw_body'     => substr( wp_remote_retrieve_body( $response ), 0, 500 ),
+		] );
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────────
