@@ -4,6 +4,8 @@
  * Jetpack / WordPress.com Stats API and inserts them as synthetic rows
  * in the wms_post_views table.
  *
+ * Uses Jetpack's own stored connection — no manual token required.
+ *
  * Imported rows are tagged with ip_hash = 'jpimport' so the process is
  * idempotent — re-running it skips posts that already have imported data.
  *
@@ -23,8 +25,6 @@ class WMS_Jetpack_Import {
 
 	const MENU_SLUG   = 'wms-jetpack-import';
 	const IMPORT_MARK = 'jpimport';  // ip_hash marker — identifies synthetic rows
-	const API_BASE    = 'https://public-api.wordpress.com/rest/v1.1/sites/';
-	const OPT_SITE_ID = 'wms_jp_site_id';
 
 	// ── Boot ─────────────────────────────────────────────────────────────────
 
@@ -53,12 +53,9 @@ class WMS_Jetpack_Import {
 			wp_die( esc_html__( 'Permission denied.', 'wp-milner-stats' ) );
 		}
 
-		// Try to auto-detect site ID from Jetpack if it is still active
-		$auto_site_id  = '';
-		if ( class_exists( 'Jetpack_Options' ) ) {
-			$auto_site_id = (string) Jetpack_Options::get_option( 'id' );
-		}
-		$saved_site_id = get_option( self::OPT_SITE_ID, $auto_site_id );
+		// Check Jetpack is available and connected
+		$jetpack_ready = self::jetpack_client_available();
+		$site_id       = class_exists( 'Jetpack_Options' ) ? (string) Jetpack_Options::get_option( 'id' ) : '';
 
 		// Count any already-imported rows so the user knows the current state
 		global $wpdb;
@@ -97,54 +94,23 @@ class WMS_Jetpack_Import {
 				</div>
 				<?php endif; ?>
 
-				<h2 style="font-size:15px;border-bottom:1px solid #ddd;padding-bottom:6px">
-					<?php esc_html_e( 'Step 1 — Get your WordPress.com access token', 'wp-milner-stats' ); ?>
-				</h2>
-
-				<ol style="margin-left:20px;line-height:1.9;font-size:13px">
-					<li>
-						<?php esc_html_e( 'Log in to WordPress.com and go to:', 'wp-milner-stats' ); ?>
-						<code style="background:#f0f0f0;padding:2px 6px;border-radius:3px">wordpress.com/me/security/access-tokens</code>
-					</li>
-					<li><?php esc_html_e( 'Click "Generate Token", give it any name (e.g. "Milner Stats Import"), and copy it.', 'wp-milner-stats' ); ?></li>
-					<li><?php esc_html_e( 'Paste it below. The token is used only for this session and is not stored permanently.', 'wp-milner-stats' ); ?></li>
-				</ol>
-
-				<h2 style="font-size:15px;border-bottom:1px solid #ddd;padding-bottom:6px;margin-top:22px">
-					<?php esc_html_e( 'Step 2 — Enter credentials and run', 'wp-milner-stats' ); ?>
-				</h2>
-
-				<table class="form-table" style="margin-top:12px">
-					<tr>
-						<th style="width:130px;padding:8px 0"><?php esc_html_e( 'Site ID', 'wp-milner-stats' ); ?></th>
-						<td style="padding:8px 0">
-							<input type="text" id="wms-jp-site-id"
-								value="<?php echo esc_attr( $saved_site_id ); ?>"
-								placeholder="e.g. 12345678"
-								style="width:200px">
-							<?php if ( $auto_site_id ) : ?>
-								<span style="color:#00a32a;margin-left:8px;font-size:12px">
-									&#10003; <?php esc_html_e( 'Auto-detected from Jetpack', 'wp-milner-stats' ); ?>
-								</span>
-							<?php else : ?>
-								<p class="description" style="margin:4px 0 0">
-									<?php esc_html_e( 'Find this in Jetpack → Settings → scroll to the bottom, or in the URL on wordpress.com/stats.', 'wp-milner-stats' ); ?>
-								</p>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<th style="padding:8px 0"><?php esc_html_e( 'Access Token', 'wp-milner-stats' ); ?></th>
-						<td style="padding:8px 0">
-							<input type="password" id="wms-jp-token"
-								placeholder="<?php esc_attr_e( 'Paste your WordPress.com token here', 'wp-milner-stats' ); ?>"
-								style="width:400px">
-						</td>
-					</tr>
-				</table>
+				<?php if ( ! $jetpack_ready ) : ?>
+				<div style="background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;padding:14px 16px;margin-bottom:20px;font-size:13px">
+					<strong><?php esc_html_e( 'Jetpack is not available or not connected.', 'wp-milner-stats' ); ?></strong>
+					<?php esc_html_e( 'Please ensure Jetpack is active and connected to WordPress.com before running the import.', 'wp-milner-stats' ); ?>
+				</div>
+				<?php else : ?>
+				<div style="background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px">
+					&#10003; <?php esc_html_e( 'Jetpack is connected.', 'wp-milner-stats' ); ?>
+					<?php if ( $site_id ) : ?>
+						<?php /* translators: %s: numeric site ID */ ?>
+						<?php printf( esc_html__( 'Site ID: %s', 'wp-milner-stats' ), '<strong>' . esc_html( $site_id ) . '</strong>' ); ?>
+					<?php endif; ?>
+				</div>
+				<?php endif; ?>
 
 				<p style="margin-top:16px;display:flex;gap:8px;align-items:center">
-					<button id="wms-jp-start" class="button button-primary">
+					<button id="wms-jp-start" class="button button-primary" <?php echo $jetpack_ready ? '' : 'disabled'; ?>>
 						<?php esc_html_e( 'Start Import', 'wp-milner-stats' ); ?>
 					</button>
 					<button id="wms-jp-stop" class="button" style="display:none">
@@ -223,14 +189,6 @@ class WMS_Jetpack_Import {
 
 			// ── Start import ───────────────────────────────────────────────
 			startBtn.addEventListener( 'click', function () {
-				var siteId = document.getElementById( 'wms-jp-site-id' ).value.trim();
-				var token  = document.getElementById( 'wms-jp-token' ).value.trim();
-
-				if ( ! siteId || ! token ) {
-					alert( 'Please enter both the Site ID and the Access Token.' );
-					return;
-				}
-
 				stopped      = false;
 				totalViews   = 0; totalDates  = 0;
 				totalSkipped = 0; totalErrors = 0;
@@ -252,7 +210,7 @@ class WMS_Jetpack_Import {
 						}
 						var posts = res.data.posts;
 						log( 'Found ' + posts.length + ' posts/pages to process.\n' );
-						processNext( posts, 0, siteId, token );
+						processNext( posts, 0 );
 					} )
 					.catch( function ( e ) {
 						statusEl.textContent = 'Network error: ' + e.message;
@@ -267,7 +225,7 @@ class WMS_Jetpack_Import {
 				statusEl.textContent = 'Stopping after current post\u2026';
 			} );
 
-			function processNext( posts, index, siteId, token ) {
+			function processNext( posts, index ) {
 				if ( stopped || index >= posts.length ) {
 					finish( posts.length, index );
 					return;
@@ -278,7 +236,7 @@ class WMS_Jetpack_Import {
 				bar.style.width      = pct + '%';
 				statusEl.textContent = '(' + ( index + 1 ) + '\u2009/\u2009' + posts.length + ')  ' + p.title;
 
-				post( 'wms_jp_import_post', { post_id: p.id, site_id: siteId, token: token } )
+				post( 'wms_jp_import_post', { post_id: p.id } )
 					.then( function ( res ) {
 						if ( res.success ) {
 							var d = res.data;
@@ -299,12 +257,12 @@ class WMS_Jetpack_Import {
 							log( '  \u2718 [' + p.id + '] ' + p.title + ' \u2014 ' + ( res.data || 'error' ) );
 						}
 						// Small delay to be polite to the API
-						setTimeout( function () { processNext( posts, index + 1, siteId, token ); }, 250 );
+						setTimeout( function () { processNext( posts, index + 1 ); }, 250 );
 					} )
 					.catch( function ( e ) {
 						totalErrors++;
 						log( '  \u2718 [' + p.id + '] ' + p.title + ' \u2014 network error: ' + e.message );
-						setTimeout( function () { processNext( posts, index + 1, siteId, token ); }, 250 );
+						setTimeout( function () { processNext( posts, index + 1 ); }, 250 );
 					} );
 			}
 
@@ -368,22 +326,16 @@ class WMS_Jetpack_Import {
 		}
 
 		$post_id = absint( $_POST['post_id'] ?? 0 );
-		$site_id = sanitize_text_field( wp_unslash( $_POST['site_id'] ?? '' ) );
-		$token   = sanitize_text_field( wp_unslash( $_POST['token']   ?? '' ) );
-
-		if ( ! $post_id || ! $site_id || ! $token ) {
-			wp_send_json_error( 'Missing parameters.' );
+		if ( ! $post_id ) {
+			wp_send_json_error( 'Missing post_id.' );
 		}
-
-		// Persist site_id for convenience (not sensitive)
-		update_option( self::OPT_SITE_ID, $site_id, false );
 
 		// Idempotency: skip if we've already imported this post
 		if ( self::has_imported_data( $post_id ) ) {
 			wp_send_json_success( [ 'skipped' => true ] );
 		}
 
-		$daily = self::fetch_post_stats( $site_id, $token, $post_id );
+		$daily = self::fetch_post_stats( $post_id );
 		if ( is_wp_error( $daily ) ) {
 			wp_send_json_error( $daily->get_error_message() );
 		}
@@ -422,6 +374,20 @@ class WMS_Jetpack_Import {
 	// ── Private helpers ───────────────────────────────────────────────────────
 
 	/**
+	 * Return true if Jetpack's connection client is available and the site is connected.
+	 */
+	private static function jetpack_client_available(): bool {
+		if ( ! class_exists( 'Jetpack_Options' ) ) {
+			return false;
+		}
+		if ( ! Jetpack_Options::get_option( 'id' ) ) {
+			return false;
+		}
+		return class_exists( 'Automattic\Jetpack\Connection\Client' )
+			|| class_exists( 'Jetpack_Client' );
+	}
+
+	/**
 	 * Return true if this post already has imported rows in the database.
 	 */
 	private static function has_imported_data( int $post_id ): bool {
@@ -438,16 +404,30 @@ class WMS_Jetpack_Import {
 	}
 
 	/**
-	 * Fetch daily view counts for a post from the WordPress.com Stats API.
+	 * Fetch daily view counts for a post using Jetpack's stored connection.
 	 *
 	 * @return array<string,int>|WP_Error  e.g. ['2023-01-01' => 45, ...]
 	 */
-	private static function fetch_post_stats( string $site_id, string $token, int $post_id ) {
-		$url      = self::API_BASE . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
-		$response = wp_remote_get( $url, [
-			'headers' => [ 'Authorization' => 'Bearer ' . $token ],
-			'timeout' => 20,
-		] );
+	private static function fetch_post_stats( int $post_id ) {
+		if ( ! class_exists( 'Jetpack_Options' ) ) {
+			return new WP_Error( 'no_jetpack', 'Jetpack is not active.' );
+		}
+
+		$site_id = (string) Jetpack_Options::get_option( 'id' );
+		if ( ! $site_id ) {
+			return new WP_Error( 'no_site_id', 'Jetpack site ID not found — is Jetpack connected?' );
+		}
+
+		$path = '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
+
+		// Use whichever Jetpack client is available
+		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
+			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user( $path, '1.1' );
+		} elseif ( class_exists( 'Jetpack_Client' ) ) {
+			$response = Jetpack_Client::wpcom_json_api_request_as_user( $path, '1.1' );
+		} else {
+			return new WP_Error( 'no_client', 'Jetpack HTTP client not found.' );
+		}
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -457,10 +437,10 @@ class WMS_Jetpack_Import {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( 401 === $code ) {
-			return new WP_Error( 'auth', 'Invalid or expired token — check your WordPress.com access token.' );
+			return new WP_Error( 'auth', 'Jetpack authentication failed — try reconnecting Jetpack.' );
 		}
 		if ( 403 === $code ) {
-			return new WP_Error( 'forbidden', 'Token does not have access to this site.' );
+			return new WP_Error( 'forbidden', 'Jetpack connection does not have access to stats for this site.' );
 		}
 		if ( 404 === $code ) {
 			// Post exists locally but has no Jetpack stats record — normal for new or unviewed posts
@@ -489,11 +469,6 @@ class WMS_Jetpack_Import {
 
 	/**
 	 * Bulk-insert synthetic view rows for a post's historical data.
-	 *
-	 * Each view becomes one row with:
-	 *   - viewed_at  = noon UTC on that date
-	 *   - ip_hash    = self::IMPORT_MARK  (marks as imported — enables idempotency)
-	 *   - is_new_visitor = 0  (visitor data is unknown from Jetpack aggregate counts)
 	 *
 	 * @param  int               $post_id
 	 * @param  array<string,int> $daily    ['YYYY-MM-DD' => view_count]
@@ -531,9 +506,6 @@ class WMS_Jetpack_Import {
 
 	/**
 	 * Execute one bulk INSERT for a buffer of prepared value strings.
-	 *
-	 * @param string   $table   Full prefixed table name.
-	 * @param string[] $buffer  Array of prepared value strings like '(1, "2023-01-01 12:00:00", "jpimport", 0)'.
 	 */
 	private static function flush_buffer( string $table, array $buffer ): void {
 		global $wpdb;
