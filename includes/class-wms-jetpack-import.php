@@ -423,11 +423,17 @@ class WMS_Jetpack_Import {
 		$path    = '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
 
 		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
-			$client   = 'Automattic\Jetpack\Connection\Client';
-			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user( $path, '1.1' );
+			$client   = 'Automattic\Jetpack\Connection\Client (as_blog, v1.1)';
+			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_blog(
+				$path,
+				'1.1',
+				[],
+				null,
+				'https://public-api.wordpress.com'
+			);
 		} elseif ( class_exists( 'Jetpack_Client' ) ) {
-			$client   = 'Jetpack_Client';
-			$response = Jetpack_Client::wpcom_json_api_request_as_user( $path, '1.1' );
+			$client   = 'Jetpack_Client (as_blog, v1.1)';
+			$response = Jetpack_Client::wpcom_json_api_request_as_blog( $path, '1.1' );
 		} else {
 			wp_send_json_error( 'No Jetpack client class available.' );
 		}
@@ -500,11 +506,18 @@ class WMS_Jetpack_Import {
 
 		$path = '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id;
 
-		// Use whichever Jetpack client is available
+		// Use the blog token (always present when Jetpack is connected) with the
+		// v1.1 base URL explicitly — the default v2 base doesn't have the stats route.
 		if ( class_exists( 'Automattic\Jetpack\Connection\Client' ) ) {
-			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user( $path, '1.1' );
+			$response = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_blog(
+				$path,
+				'1.1',
+				[],
+				null,
+				'https://public-api.wordpress.com'
+			);
 		} elseif ( class_exists( 'Jetpack_Client' ) ) {
-			$response = Jetpack_Client::wpcom_json_api_request_as_user( $path, '1.1' );
+			$response = Jetpack_Client::wpcom_json_api_request_as_blog( $path, '1.1' );
 		} else {
 			return new WP_Error( 'no_client', 'Jetpack HTTP client not found.' );
 		}
