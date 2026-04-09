@@ -433,28 +433,42 @@ class WMS_Jetpack_Import {
 
 		$results = [ 'site_id' => $site_id, 'path' => $path, 'has_user_token' => $has_user_token ];
 
-		$call = function( string $p ) use ( &$results, $site_id ): void {
-			if ( ! class_exists( 'Automattic\Jetpack\Connection\Client' ) ) return;
-			$r = Automattic\Jetpack\Connection\Client::wpcom_json_api_request_as_user(
-				$p, '1.1', [], null, 'https://public-api.wordpress.com'
-			);
-			$results[ $p ] = is_wp_error( $r )
-				? [ 'wp_error' => $r->get_error_message() ]
-				: [ 'http_code' => wp_remote_retrieve_response_code( $r ),
-				    'body'      => json_decode( wp_remote_retrieve_body( $r ), true ) ];
+		// Get the raw user token secret so we can make a direct request,
+		// bypassing the Jetpack client entirely (to rule out local proxy interception).
+		$token_secret = '';
+		if ( class_exists( 'Automattic\Jetpack\Connection\Manager' ) ) {
+			$tok = ( new Automattic\Jetpack\Connection\Manager() )->get_access_token( get_current_user_id() );
+			if ( $tok && ! empty( $tok->secret ) ) {
+				$token_secret = $tok->secret;
+			}
+		} elseif ( class_exists( 'Jetpack_Data' ) ) {
+			$tok = Jetpack_Data::get_access_token( get_current_user_id() );
+			if ( $tok && ! empty( $tok->secret ) ) {
+				$token_secret = $tok->secret;
+			}
+		}
+
+		$results['token_secret_length'] = strlen( $token_secret );
+
+		// Direct wp_remote_get — bypasses Jetpack client and any proxy filters
+		$direct = function( string $url ) use ( $token_secret ): array {
+			$r = wp_remote_get( $url, [
+				'headers' => [ 'Authorization' => 'X_JETPACK token=' . $token_secret ],
+				'timeout' => 15,
+				'sslverify' => true,
+			] );
+			if ( is_wp_error( $r ) ) {
+				return [ 'wp_error' => $r->get_error_message() ];
+			}
+			return [
+				'http_code' => wp_remote_retrieve_response_code( $r ),
+				'body'      => json_decode( wp_remote_retrieve_body( $r ), true ),
+			];
 		};
 
-		// Test 1: per-post stats with Jetpack site ID
-		$call( '/sites/' . rawurlencode( $site_id ) . '/stats/post/' . $post_id );
-
-		// Test 2: sitewide stats summary with Jetpack site ID — confirms whether 3332322 is accessible at all
-		$call( '/sites/' . rawurlencode( $site_id ) . '/stats/' );
-
-		// Test 3: per-post stats with the alternate ID seen in the WP.com user object
-		$call( '/sites/5836086/stats/post/' . $post_id );
-
-		// Test 4: sitewide stats with the alternate ID
-		$call( '/sites/5836086/stats/' );
+		$results['direct_sitewide_3332322']  = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/' );
+		$results['direct_post_3332322']      = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/3332322/stats/post/' . $post_id );
+		$results['direct_sitewide_5836086']  = $direct( 'https://public-api.wordpress.com/rest/v1.1/sites/5836086/stats/' );
 
 		wp_send_json_success( $results );
 	}
